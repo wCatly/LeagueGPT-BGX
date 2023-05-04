@@ -178,6 +178,7 @@
     <ClInclude Include="..\plugin_sdk\cpplinq.h" />
     <ClInclude Include="..\plugin_sdk\plugin_sdk.hpp" />
     <ClInclude Include="GPT.hpp" />
+    <ClInclude Include="Helpers.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

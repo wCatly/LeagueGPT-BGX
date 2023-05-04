@@ -8,6 +8,12 @@
     <Filter Include="plugin_sdk">
       <UniqueIdentifier>{bd2578a1-3ff5-40ed-adbc-4679e687d14c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Helpers">
+      <UniqueIdentifier>{e2a94f1d-3dd0-4760-b07c-f21b835d4691}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Main">
+      <UniqueIdentifier>{04b99e2c-bb4b-4a31-822b-7a121719b3be}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -30,7 +36,10 @@
     <ClInclude Include="..\plugin_sdk\clipper.h">
       <Filter>plugin_sdk</Filter>
     </ClInclude>
-    <ClInclude Include="GPT.hpp" />
+    <ClInclude Include="GPT.hpp">
+      <Filter>src\Main</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
