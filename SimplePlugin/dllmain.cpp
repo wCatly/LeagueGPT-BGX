@@ -38,7 +38,7 @@ PLUGIN_API bool on_sdk_load( plugin_sdk_core* plugin_sdk_good )
 
     std::string prompt = "Your prompt text";
 
-
+	myhero->print_chat(0, "?_???");
 
     return true;
 }
