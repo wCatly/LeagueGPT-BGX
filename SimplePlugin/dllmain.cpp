@@ -22,23 +22,19 @@ PLUGIN_API bool on_sdk_load( plugin_sdk_core* plugin_sdk_good )
 {
     DECLARE_GLOBALS( plugin_sdk_good );
 
-	/*loaded_texture* image;
-	image = draw_manager->load_texture_from_file(L"leaguegpt.png");*/
+	//loaded_texture* image;
+	//image = draw_manager->load_texture_from_file(L"leaguegpt.png");
 
 	//=========================================================================//
     // Menu Creation                                                           //
     //=========================================================================//
 	main_tab = menu->create_tab("league_gpt", "LeagueGPT");
-	/*main_tab->set_assigned_texture(image->texture);*/
+	//main_tab->set_assigned_texture(image->texture);
 	//=========================================================================//
 	// Load Modules                                                            //
 	//=========================================================================//
 
 	GPT::load(main_tab);
-
-    std::string prompt = "Your prompt text";
-
-	myhero->print_chat(0, "?_???");
 
     return true;
 }

@@ -47,45 +47,10 @@ namespace GPT
 	};
 
 
-	inline std::string get_modal(int value) {
-		std::string result;
 
-		switch (value) {
-		case 0:
-			result = "gpt-4";
-			break;
-		case 1:
-			result = "gpt-4-0314";
-			break;
-		case 2:
-			result = "gpt-3.5-turbo";
-			break;
-		case 3:
-			result = "gpt-3.5-turbo-0301";
-			break;
-		default:
-			result = ""; // or any other default value
-			break;
-		}
-
-		return result;
-	}
-
-	std::string exec_and_wait(const char* cmd)
-	{
-		// Wrap the exec function in an async task
-		auto future_result = std::async(std::launch::async, exec, cmd);
-
-		// Wait for the result and return it
-		return future_result.get();
-	}
 
 	void make_request_new(std::string prompt, ChatType type)
 	{
-
-
-	
-
 		try
 		{
 			std::string command = "LeagueGPTHelper.exe --model=\"" + get_modal(settings::modal->get_int()) + "\" --key=\"" + settings::open_ai_key->get_string() + "\" --system=\"" + settings::selected_promt + "\" --user=\"" + prompt + "\"";

@@ -51,6 +51,30 @@ inline std::string replace_variables(const std::string& prompt_text, std::map<st
     return result;
 }
 
+inline std::string get_modal(int value) {
+    std::string result;
+
+    switch (value) {
+    case 0:
+        result = "gpt-4";
+        break;
+    case 1:
+        result = "gpt-4-0314";
+        break;
+    case 2:
+        result = "gpt-3.5-turbo";
+        break;
+    case 3:
+        result = "gpt-3.5-turbo-0301";
+        break;
+    default:
+        result = ""; // or any other default value
+        break;
+    }
+
+    return result;
+}
+
 
 
 
