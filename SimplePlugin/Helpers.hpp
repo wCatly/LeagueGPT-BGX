@@ -16,6 +16,20 @@
 using json = nlohmann::json;
 
 
+std::string removeSpecialCharacters(const std::string& str) {
+    std::string result;
+    std::remove_copy_if(str.begin(), str.end(), std::back_inserter(result),
+        [](char c) { return !std::isalnum(c); });
+
+    std::transform(result.begin(), result.end(), result.begin(),
+        [](unsigned char c) { return std::tolower(c); });
+
+    result.erase(std::remove(result.begin(), result.end(), ' '), result.end());
+
+    return result;
+}
+
+
 std::string exec(const char* cmd)
 {
     std::array<char, 128> buffer;

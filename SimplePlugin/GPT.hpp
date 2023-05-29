@@ -94,6 +94,7 @@ namespace GPT
 	}
 
 
+
 	std::tuple<ChatType, std::string, bool> parseChatMessage(std::string input, std::string myhero_name, ParseType type) {
 
 
@@ -129,7 +130,10 @@ namespace GPT
 				formattedMessage = "Message from " + std::get<2>(message_tuple) + ": " + message;
 			}
 
-			bool isFromMe = std::get<2>(message_tuple) == myhero_name;
+			std::string message_name = removeSpecialCharacters(std::get<2>(message_tuple));
+			std::string normalized_hero_name = removeSpecialCharacters(myhero_name);
+
+			bool isFromMe = message_name == normalized_hero_name;
 
 			return { messageType, formattedMessage, isFromMe };
 		}
