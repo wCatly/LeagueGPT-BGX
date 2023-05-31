@@ -28,6 +28,7 @@ namespace GPT
 		TreeEntry* temperature;
 
 		TreeEntry* promt;
+		TreeEntry* check_ai;
 
 		std::string selected_promt;
 		std::string custom_ignore_key;
@@ -56,36 +57,41 @@ namespace GPT
 			std::string command = "LeagueGPTHelper.exe --model=\"" + get_modal(settings::modal->get_int()) + "\" --key=\"" + settings::open_ai_key->get_string() + "\" --system=\"" + settings::selected_promt + "\" --user=\"" + prompt + "\"";
 			std::string response_str = exec(command.c_str());
 
-			console->print(response_str.c_str());
-			json response = json::parse(response_str);
 
-			if (response.contains("error")) {
-				std::string errorMessage = response["error"]["message"];
-				std::string errorType = response["error"]["type"];
-				std::string errorPrint = "<font color='#FF69B4'>[LeagueGPT]</font><font color='#FF0000'> [ERROR]:</font></font><font color='#FFFFFF'> " + errorMessage + " (" + errorType + ")</font>";
-				(errorPrint.c_str());
+			if (response_str.find("ERROR:") != std::string::npos) {
+				std::string errorPrint = "<font color='#FF69B4'>[LeagueGPT]</font><font color='#FF0000'> [ERROR]:</font></font><font color='#FFFFFF'> " + response_str + "</font>";
 
 				myhero->print_chat(1, errorPrint.c_str());
+				return;
 			}
 
-			std::string text = response["choices"][0]["message"]["content"];
+			try
+			{
+				json response = json::parse(response_str);
+				std::string text = response["choices"][0]["message"]["content"];
 
-			std::string lower_text = text;
-			size_t pos = text.find(settings::custom_ignore_key);
-			if (pos != std::string::npos) {
+				std::string lower_text = text;
+				size_t pos = text.find(settings::custom_ignore_key);
+				if (pos != std::string::npos) {
 
-				console->print("\nI cant:");
-				return; // Return without sending the message
-			}
+					return; // Return without sending the message
+				}
 
-			if (type == ChatType::All) {
-				myhero->send_chat(("/all " + text).c_str());
-				console->print("\nI need to send message here:");
+				if (type == ChatType::All) {
+					myhero->send_chat(("/all " + text).c_str());
+					return;
+				}
+				else if (type == ChatType::Team) {
+					myhero->send_chat(text.c_str());
+					return;
+				}
 			}
-			else if (type == ChatType::Team) {
-				myhero->send_chat(text.c_str());
-				console->print("\nI need to send message here:");
+			catch (const std::exception& e) {
+				/*std::string errorPrint = "<font color='#FF69B4'>[LeagueGPT]</font><font color='#FF0000'> [ERROR]:</font></font><font color='#FFFFFF'> " + response_str + "</font>";*/
+				myhero->print_chat(1, "something went wrong");
+				return;
 			}
+			
 		}
 		catch (const std::runtime_error& e)
 		{
@@ -171,6 +177,7 @@ namespace GPT
 
 	void on_update()
 	{
+
 		auto current_chat_message = gui->get_last_chat_message();
 
 		if (current_chat_message != last_chat_message)
@@ -286,6 +293,39 @@ namespace GPT
 
 		settings::selected_promt = replace_variables(item_tooltip, variable_map);
 		settings::custom_ignore_key = community_prompts[settings::promt->get_int()].ignore_key;
+
+		settings::check_ai = main->add_button("ai_button", "Make test request");
+
+		PropertyChangeCallback Button = [](TreeEntry* entry)
+		{
+			std::string prompt = "Say this is a test!";
+			std::string command = "LeagueGPTHelper.exe --model=\"" + get_modal(settings::modal->get_int()) + "\" --key=\"" + settings::open_ai_key->get_string() + "\" --system=\"" + settings::selected_promt + "\" --user=\"" + prompt + "\"";
+			std::string response_str = exec(command.c_str());
+
+			if (response_str.find("ERROR:") != std::string::npos) {
+				std::string errorPrint = "<font color='#FF69B4'>[LeagueGPT]</font><font color='#FF0000'> [ERROR]:</font></font><font color='#FFFFFF'> " + response_str + "</font>";
+
+				myhero->print_chat(1, errorPrint.c_str());
+				return;
+			}
+
+			try {
+				json response = json::parse(response_str);
+				std::string text = response["choices"][0]["message"]["content"];
+				std::string SucsessPrint = "<font color='#FF69B4'>[LeagueGPT]</font><font color='#00FF00'> [TEST MESSAGE SUCSESS!]:</font></font><font color='#FFFFFF'> " + text + "</font>";
+				myhero->print_chat(1, SucsessPrint.c_str());
+				return;
+			}
+			catch (const std::exception& e) {
+				/*std::string errorPrint = "<font color='#FF69B4'>[LeagueGPT]</font><font color='#FF0000'> [ERROR]:</font></font><font color='#FFFFFF'> " + response_str + "</font>";*/
+				myhero->print_chat(1, "something wrong");
+				return;
+			}
+
+			
+
+		};
+		settings::check_ai->add_property_change_callback(Button);
 
 
 		event_handler<events::on_update>::add_callback(on_update);

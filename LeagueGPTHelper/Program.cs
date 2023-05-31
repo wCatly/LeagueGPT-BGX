@@ -9,6 +9,19 @@ class Program
 {
     static readonly HttpClient client = new HttpClient();
 
+    public class ErrorResponse
+    {
+        public ErrorDetail Error { get; set; }
+    }
+
+    public class ErrorDetail
+    {
+        public string Message { get; set; }
+        public string Type { get; set; }
+        public string Param { get; set; }
+        public string Code { get; set; }
+    }
+    
     static async Task Main(string[] args)
     {
         var parameters = ParseArguments(args);
@@ -44,8 +57,20 @@ class Program
 
         if (debug) Console.WriteLine("Reading response...");
         var result = await response.Content.ReadAsStringAsync();
+
+        if (result.Contains("error"))
+        {
+            // Deserialize the error JSON response
+            var errorResponse = JsonConvert.DeserializeObject<ErrorResponse>(result);
+    
+            // Display the error details
+            Console.WriteLine($"ERROR: Type: {errorResponse.Error.Type}, Code: {errorResponse.Error.Code} Message: {errorResponse.Error.Message}"); 
+            return;
+        }
+
         
         Console.WriteLine(result);
+        return;
     }
 
     static Dictionary<string, string> ParseArguments(string[] args)
