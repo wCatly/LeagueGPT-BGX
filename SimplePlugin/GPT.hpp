@@ -38,7 +38,7 @@ namespace GPT
 
 		TreeEntry* onkill;
 		TreeEntry* on_assist;
-		TreeEntry* message_cooldown;
+
 
 		TreeEntry* quiet_hotkey;
 		TreeEntry* quiet_hotkey_team;
@@ -61,10 +61,6 @@ namespace GPT
 		Optimized
 	};
 
-
-	float message_cooldown = 0;
-
-	float message_cooldown2 = 0;
 
 	void make_request_new(std::string prompt, ChatType type)
 	{
@@ -195,8 +191,6 @@ namespace GPT
 			const int assists = myhero->get_hero_stat(int_hero_stat::ASSISTS);
 			if (kill != old_kills || assists != old_assists)
 			{
-				if (message_cooldown2 < gametime->get_time())
-				{
 					if (settings::onkill->get_bool() && kill != old_kills)
 					{
 						std::string KillMessage = "you got an kill on the enemy " + sender->get_base_skin_name() + " and now disrespect him in all chat (use his name and harass the enemy on his champion)";
@@ -210,8 +204,7 @@ namespace GPT
 						tasks.push_back(new std::thread(make_request_new, AssistlMessage, ChatType::All));
 					}
 
-					message_cooldown2 = (settings::message_cooldown->get_int() + gametime->get_time());
-				}
+				
 				
 				old_kills = kill;
 				old_assists = assists;
@@ -227,16 +220,13 @@ namespace GPT
 
 		if(current_chat_message == nullptr) return;
 
-		if (message_cooldown < gametime->get_time())
-		{
+
 			if (current_chat_message != last_chat_message && settings::enabled->get_bool())
 			{
 				new_chat_message(current_chat_message);
 				last_chat_message = current_chat_message;
 			}
 
-			message_cooldown = (settings::message_cooldown->get_int() + gametime->get_time());
-		}
 	}
 
 
@@ -276,8 +266,6 @@ namespace GPT
 		main->set_assigned_active(settings::enabled);
 
 		settings::dont_if_dead = main->add_checkbox("deadcheck", "Don't send message if myhero dead", true);
-
-		settings::message_cooldown = main->add_slider("cooldown", "Messages Cooldown", 1, 0, 20);
 
 		main->add_separator("value_separator", "AI customization settings");
 
