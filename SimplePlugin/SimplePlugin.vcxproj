@@ -172,6 +172,7 @@
     <ClCompile Include="..\plugin_sdk\clipper.cpp" />
     <ClCompile Include="..\plugin_sdk\plugin_sdk.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="permashow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\plugin_sdk\clipper.h" />
@@ -179,6 +180,7 @@
     <ClInclude Include="..\plugin_sdk\plugin_sdk.hpp" />
     <ClInclude Include="GPT.hpp" />
     <ClInclude Include="Helpers.hpp" />
+    <ClInclude Include="permashow.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

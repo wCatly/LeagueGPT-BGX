@@ -14,6 +14,9 @@
     <Filter Include="src\Main">
       <UniqueIdentifier>{04b99e2c-bb4b-4a31-822b-7a121719b3be}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Permashow">
+      <UniqueIdentifier>{a3f9b0d1-1b31-480e-b909-d9f02efbeb1a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -24,6 +27,9 @@
     </ClCompile>
     <ClCompile Include="..\plugin_sdk\clipper.cpp">
       <Filter>plugin_sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="permashow.cpp">
+      <Filter>Permashow</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -40,6 +46,9 @@
       <Filter>src\Main</Filter>
     </ClInclude>
     <ClInclude Include="Helpers.hpp" />
+    <ClInclude Include="permashow.hpp">
+      <Filter>Permashow</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -1,10 +1,7 @@
 
 #include "../plugin_sdk/plugin_sdk.hpp"
 
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <nlohmann/json.hpp>
-#include <fmt/format.h>
+
 #include <string>
 #include <stdexcept>
 #include <array>
@@ -13,6 +10,7 @@
 #include <memory>
 
 #include "GPT.hpp"
+#include "permashow.hpp"
 				
 PLUGIN_NAME("LeagueGPT");
 PLUGIN_TYPE(plugin_type::utility);
@@ -41,5 +39,7 @@ PLUGIN_API bool on_sdk_load( plugin_sdk_core* plugin_sdk_good )
 
 PLUGIN_API void on_sdk_unload( )
 {
+	GPT::unload();
 	menu->delete_tab(main_tab);
+	GetPermashow().Destroy();
 }   

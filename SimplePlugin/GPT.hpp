@@ -3,6 +3,7 @@
 #include <thread>
 
 #include "Helpers.hpp"
+#include "permashow.hpp"
 
 namespace GPT
 {
@@ -32,7 +33,20 @@ namespace GPT
 
 		std::string selected_promt;
 		std::string custom_ignore_key;
+
+		TreeEntry* game_events;
+
+		TreeEntry* onkill;
+		TreeEntry* on_assist;
+		TreeEntry* message_cooldown;
+
+		TreeEntry* quiet_hotkey;
+		TreeEntry* quiet_hotkey_team;
 	}
+
+	int old_kills = 0;
+	int old_assists = 0;
+
 
 	int last_chat_index = 0;
 
@@ -48,7 +62,9 @@ namespace GPT
 	};
 
 
+	float message_cooldown = 0;
 
+	float message_cooldown2 = 0;
 
 	void make_request_new(std::string prompt, ChatType type)
 	{
@@ -87,7 +103,6 @@ namespace GPT
 				}
 			}
 			catch (const std::exception& e) {
-				/*std::string errorPrint = "<font color='#FF69B4'>[LeagueGPT]</font><font color='#FF0000'> [ERROR]:</font></font><font color='#FFFFFF'> " + response_str + "</font>";*/
 				myhero->print_chat(1, "something went wrong");
 				return;
 			}
@@ -99,14 +114,13 @@ namespace GPT
 		}
 	}
 
-
-
 	std::tuple<ChatType, std::string, bool> parseChatMessage(std::string input, std::string myhero_name, ParseType type) {
 
 
 		std::regex re(R"(\[(.*?)\] (.*?) \((.*?)\): <\/font><font color='#FFFFFF'>(.*?)<\/font>)");
 		std::smatch match;
-		console->print(input.c_str());
+
+
 		if (std::regex_search(input, match, re)) {
 			std::string message_type = match.str(1);
 			std::string player_name = match.str(2);
@@ -143,9 +157,6 @@ namespace GPT
 
 			return { messageType, formattedMessage, isFromMe };
 		}
-		else {
-			std::cout << "No match found" << std::endl;
-		}
 
 		return { ChatType::Unknown, "", false };
 	}
@@ -162,28 +173,69 @@ namespace GPT
 		// Pass 'msg' directly to parseChatMessage
 		std::tie(chatType, formattedMessage, isFromMe) = parseChatMessage(msg, myhero->get_base_skin_name(), ParseType::Optimized);
 
-		console->print(("\nMessage: " + formattedMessage).c_str());
-		console->print(("\nIs from me: " + std::string(isFromMe ? "Yes" : "No")).c_str());
+		//console->print(("\nMessage: " + formattedMessage).c_str());
+		//console->print(("\nIs from me: " + std::string(isFromMe ? "Yes" : "No")).c_str());
 
 		// Example usage for ally_all message
 		if (chatType != ChatType::Unknown && !formattedMessage.empty() && !isFromMe) {
 
 			tasks.push_back(new std::thread(make_request_new, formattedMessage, chatType));
+
 		}
 
 	}
 
 	std::string last_chat_message;
 
+	void on_object_dead(const game_object_script sender)
+	{
+		if (sender->is_enemy() && sender->is_ai_hero())
+		{
+			const int kill = myhero->get_hero_stat(int_hero_stat::CHAMPIONS_KILLED);
+			const int assists = myhero->get_hero_stat(int_hero_stat::ASSISTS);
+			if (kill != old_kills || assists != old_assists)
+			{
+				if (message_cooldown2 < gametime->get_time())
+				{
+					if (settings::onkill->get_bool() && kill != old_kills)
+					{
+						std::string KillMessage = "you got an kill on the enemy " + sender->get_base_skin_name() + " and now disrespect him in all chat (use his name and harass the enemy on his champion)";
+
+						tasks.push_back(new std::thread(make_request_new, KillMessage, ChatType::All));
+					}
+					if (settings::on_assist->get_bool() && assists != old_assists)
+					{
+						std::string AssistlMessage = "you got an assist on the enemy " + sender->get_base_skin_name() + " and now disrespect him in all chat (use his name and harass the enemy on his champion)";
+
+						tasks.push_back(new std::thread(make_request_new, AssistlMessage, ChatType::All));
+					}
+
+					message_cooldown2 = (settings::message_cooldown->get_int() + gametime->get_time());
+				}
+				
+				old_kills = kill;
+				old_assists = assists;
+			}
+		}
+	}
+
+
 	void on_update()
 	{
 
 		auto current_chat_message = gui->get_last_chat_message();
 
-		if (current_chat_message != last_chat_message)
+		if(current_chat_message == nullptr) return;
+
+		if (message_cooldown < gametime->get_time())
 		{
-			new_chat_message(current_chat_message);
-			last_chat_message = current_chat_message;
+			if (current_chat_message != last_chat_message && settings::enabled->get_bool())
+			{
+				new_chat_message(current_chat_message);
+				last_chat_message = current_chat_message;
+			}
+
+			message_cooldown = (settings::message_cooldown->get_int() + gametime->get_time());
 		}
 	}
 
@@ -212,6 +264,8 @@ namespace GPT
 		}
 
 		size_t community_prompts_count = community_prompts.size();
+		old_kills = myhero->get_hero_stat(int_hero_stat::CHAMPIONS_KILLED);
+		old_assists = myhero->get_hero_stat(int_hero_stat::ASSISTS);
 
 
 		last_chat_index = gui->get_chat_current_message_index();
@@ -222,6 +276,8 @@ namespace GPT
 		main->set_assigned_active(settings::enabled);
 
 		settings::dont_if_dead = main->add_checkbox("deadcheck", "Don't send message if myhero dead", true);
+
+		settings::message_cooldown = main->add_slider("cooldown", "Messages Cooldown", 1, 0, 20);
 
 		main->add_separator("value_separator", "AI customization settings");
 
@@ -294,6 +350,16 @@ namespace GPT
 		settings::selected_promt = replace_variables(item_tooltip, variable_map);
 		settings::custom_ignore_key = community_prompts[settings::promt->get_int()].ignore_key;
 
+		main->add_separator("evetns", "Misc Stuff");
+		settings::quiet_hotkey = main->add_button("quiet_hotkey", "Quiet Hotkey");
+		settings::quiet_hotkey_team = main->add_button("quiet_hotkey_team", "Quiet Hotkey (Team)");
+		const auto events_tab = main->add_tab("events_tab", "Game Events");
+		{
+
+			settings::onkill = events_tab->add_checkbox("on_kill_event", "On Kill", false);
+			settings::on_assist = events_tab->add_checkbox("on_assistt", "On Assist", false);
+		}
+
 		settings::check_ai = main->add_button("ai_button", "Make test request");
 
 		PropertyChangeCallback Button = [](TreeEntry* entry)
@@ -321,19 +387,34 @@ namespace GPT
 				myhero->print_chat(1, "something wrong");
 				return;
 			}
-
-			
-
 		};
 		settings::check_ai->add_property_change_callback(Button);
 
+		PropertyChangeCallback QuietButton = [](TreeEntry* entry)
+		{
+			std::string SleepMessage = "the game is so quiet and you want to engage in a conversation while mentioning that you are " + myhero->get_base_skin_name();
+			tasks.push_back(new std::thread(make_request_new, SleepMessage, ChatType::All));
+		};
+		settings::quiet_hotkey->add_property_change_callback(QuietButton);
+
+		PropertyChangeCallback QuietButtonTeam = [](TreeEntry* entry)
+		{
+			std::string SleepMessage = "the game is so quiet and you want to engage in a conversation with your teammates while talking about how to win the game with " + myhero->get_base_skin_name();
+			tasks.push_back(new std::thread(make_request_new, SleepMessage, ChatType::Team));
+		};
+		settings::quiet_hotkey_team->add_property_change_callback(QuietButtonTeam);
+
+		GetPermashow().Init("LeagueGPT");
+		GetPermashow().AddElement("AI Chat", settings::enabled);
 
 		event_handler<events::on_update>::add_callback(on_update);
+		event_handler<events::on_object_dead>::add_callback(on_object_dead);
 	}
 
 	void unload()
 	{
 		event_handler<events::on_update>::remove_handler(on_update);
+		event_handler<events::on_object_dead>::remove_handler(on_object_dead);
 	}
 
 
