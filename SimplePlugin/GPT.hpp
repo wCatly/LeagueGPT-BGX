@@ -50,16 +50,7 @@ namespace GPT
 
 	int last_chat_index = 0;
 
-	enum class ChatType {
-		All,
-		Team,
-		Unknown
-	};
 
-	enum class ParseType {
-		Direct,
-		Optimized
-	};
 
 
 	void make_request_new(std::string prompt, ChatType type)
@@ -82,21 +73,7 @@ namespace GPT
 				json response = json::parse(response_str);
 				std::string text = response["choices"][0]["message"]["content"];
 
-				std::string lower_text = text;
-				size_t pos = text.find(settings::custom_ignore_key);
-				if (pos != std::string::npos) {
-
-					return; // Return without sending the message
-				}
-
-				if (type == ChatType::All) {
-					myhero->send_chat(("/all " + text).c_str());
-					return;
-				}
-				else if (type == ChatType::Team) {
-					myhero->send_chat(text.c_str());
-					return;
-				}
+				sendMessage(text, type, settings::custom_ignore_key);
 			}
 			catch (const std::exception& e) {
 				myhero->print_chat(1, "something went wrong");
@@ -397,6 +374,7 @@ namespace GPT
 
 		event_handler<events::on_update>::add_callback(on_update);
 		event_handler<events::on_object_dead>::add_callback(on_object_dead);
+		event_handler<events::onv>::add_callback(on_vote)
 	}
 
 	void unload()

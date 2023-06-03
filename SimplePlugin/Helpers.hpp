@@ -10,7 +10,69 @@
 #include <memory>
 #include <sstream>
 
+
+
 using json = nlohmann::json;
+
+enum class ChatType {
+    All,
+    Team,
+    Unknown
+};
+
+enum class ParseType {
+    Direct,
+    Optimized
+};
+
+
+
+
+bool hasQuotesAtStartAndEnd(const std::string& str) {
+    if (str.length() < 2) {
+        return false;
+    }
+    return str.front() == '\"' && str.back() == '\"';
+}
+
+std::string removeQuotesAtStartAndEnd(std::string str) {
+    if (str.length() < 2) {
+        return str;
+    }
+    if (str.front() == '\"') {
+        str.erase(0, 1); // Remove the first character
+    }
+    if (str.back() == '\"') {
+        str.erase(str.length() - 1); // Remove the last character
+    }
+    return str;
+}
+
+inline void sendMessage(std::string prompt, ChatType type, std::string ignoreKey ) {
+    if (hasQuotesAtStartAndEnd(prompt)) {
+        prompt = removeQuotesAtStartAndEnd(prompt);
+    }
+
+    // Check if the ignore key is found in the prompt. If found, return without sending the message.
+    size_t pos = prompt.find(ignoreKey);
+    if (pos != std::string::npos) return;
+
+
+    std::string message;
+
+    switch (type) {
+    case ChatType::All:
+        message = "/all " + prompt;
+        break;
+    case ChatType::Team:
+        message = prompt;
+        break;
+    default:
+        return; // If type is not handled, don't send a message
+    }
+
+    myhero->send_chat(message.c_str());
+}
 
 
 std::string removeSpecialCharacters(const std::string& str) {
