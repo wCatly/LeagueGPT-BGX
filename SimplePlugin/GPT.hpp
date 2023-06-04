@@ -39,6 +39,7 @@ namespace GPT
 		TreeEntry* onkill;
 		TreeEntry* on_assist;
 		TreeEntry* on_surrender;
+		TreeEntry* on_sur_special;
 		TreeEntry* on_neturalcamp;
 
 		TreeEntry* quiet_hotkey;
@@ -210,11 +211,6 @@ namespace GPT
 					old_kills = kill;
 					old_assists = assists;
 				}
-				ALLY_KILLS = ALLY_KILLS + 1;
-			}
-			if(sender->is_ally())
-			{
-				ENEMY_KILLS = ENEMY_KILLS + 1;
 			}
 		}
 		
@@ -229,8 +225,38 @@ namespace GPT
 			{
 				if(args.sender->is_me()) return;
 
-				std::string surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and say something to ally on his champion)";
-				tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::All));
+				std::tuple<int, int> kills = GetKills();
+				int enemyKills = std::get<0>(kills);  // Total kills for enemies
+				int allyKills = std::get<1>(kills);  // Total kills for allies
+
+				std::string surrenderPrompt;
+				
+
+				if(settings::on_sur_special->get_bool())
+				{
+					if (enemyKills > allyKills && args.success)
+					{
+						surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and harass the ally on his champion because we are losing)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
+						tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::Team));
+					}
+
+					else if (allyKills > enemyKills && args.success)
+					{
+						surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and harass the ally on his champion because we are winning)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
+						tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::Team));
+					}
+
+					
+				}
+				else
+				{
+					surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and say something to ally on his champion)";
+					tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::Team));
+				}
+
+
+
+				
 			}
 		}
 
@@ -241,12 +267,6 @@ namespace GPT
 	void on_update()
 	{
 
-		std::tuple<int, int> kills = GetKills();
-		int enemyKills = std::get<0>(kills);  // Total kills for enemies
-		int allyKills = std::get<1>(kills);  // Total kills for allies
-
-		console->print("ENEMY KILLS: %i", enemyKills);
-		console->print("ally KILLS:  %i", allyKills);
 		auto current_chat_message = gui->get_last_chat_message();
 
 		if(current_chat_message == nullptr) return;
@@ -378,6 +398,7 @@ namespace GPT
 			settings::onkill = events_tab->add_checkbox("on_kill_event", "On Kill", false);
 			settings::on_assist = events_tab->add_checkbox("on_assistt", "On Assist", false);
 			settings::on_surrender = events_tab->add_checkbox("on_sur", "On Surrender", false);
+			settings::on_sur_special = events_tab->add_checkbox("on_surs", "On SurrenderSpecialCase", false);
 		}
 
 		settings::check_ai = main->add_button("ai_button", "Make test request");
