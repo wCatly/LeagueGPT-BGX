@@ -218,49 +218,35 @@ namespace GPT
 
 	void on_vote(const on_vote_args& args)
 	{
-
-		if(args.vote_type == on_vote_type::surrender)
+		if (args.vote_type == on_vote_type::surrender && args.sender && settings::on_surrender->get_bool() && !args.sender->is_me())
 		{
-			if (args.sender && settings::on_surrender->get_bool())
+			std::tuple<int, int> kills = GetKills();
+			int enemyKills = std::get<0>(kills);
+			int allyKills = std::get<1>(kills);
+
+			std::string surrenderPrompt;
+
+			switch (settings::on_sur_special->get_bool() ? 1 : 0)
 			{
-				if(args.sender->is_me()) return;
-
-				std::tuple<int, int> kills = GetKills();
-				int enemyKills = std::get<0>(kills);  // Total kills for enemies
-				int allyKills = std::get<1>(kills);  // Total kills for allies
-
-				std::string surrenderPrompt;
-				
-
-				if(settings::on_sur_special->get_bool())
+			case 1:
+				if (enemyKills > allyKills && args.success)
 				{
-					if (enemyKills > allyKills && args.success)
-					{
-						surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and harass the ally on his champion because we are losing)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
-						tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::Team));
-					}
-
-					else if (allyKills > enemyKills && args.success)
-					{
-						surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and harass the ally on his champion because we are winning)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
-						tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::Team));
-					}
-
-					
+					surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted YES. What do you want to say? (Use his name and harass the ally on his champion because we are losing)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
 				}
-				else
+				else if (allyKills > enemyKills && args.success)
 				{
-					surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and say something to ally on his champion)";
-					tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::Team));
+					surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted YES. What do you want to say? (Use his name and harass the ally on his champion because we are winning)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
 				}
+				break;
 
-
-
-				
+			default:
+				surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + ". What do you want to say? (Use his name and say something to the ally on his champion)";
+				break;
 			}
+
+			tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::All));
 		}
 
-		
 	}
 
 
