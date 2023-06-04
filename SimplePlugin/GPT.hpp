@@ -38,7 +38,8 @@ namespace GPT
 
 		TreeEntry* onkill;
 		TreeEntry* on_assist;
-
+		TreeEntry* on_surrender;
+		TreeEntry* on_neturalcamp;
 
 		TreeEntry* quiet_hotkey;
 		TreeEntry* quiet_hotkey_team;
@@ -51,7 +52,8 @@ namespace GPT
 	int last_chat_index = 0;
 
 
-
+	int ALLY_KILLS = 0;
+	int ENEMY_KILLS = 0;
 
 	void make_request_new(std::string prompt, ChatType type)
 	{
@@ -160,14 +162,36 @@ namespace GPT
 
 	std::string last_chat_message;
 
+	std::tuple<int, int> GetKills()
+	{
+		int enemyKills = 0;
+		int allyKills = 0;
+
+		for (auto&& enemy : entitylist->get_enemy_heroes())
+		{
+			int kills = enemy->get_hero_stat(int_hero_stat::CHAMPIONS_KILLED);
+			enemyKills += kills;
+		}
+
+		for (auto&& ally : entitylist->get_ally_heroes())
+		{
+			int kills = ally->get_hero_stat(int_hero_stat::CHAMPIONS_KILLED);
+			allyKills += kills;
+		}
+
+		return std::make_tuple(enemyKills, allyKills);
+	}
+
 	void on_object_dead(const game_object_script sender)
 	{
-		if (sender->is_enemy() && sender->is_ai_hero())
+		if(sender->is_ai_hero())
 		{
-			const int kill = myhero->get_hero_stat(int_hero_stat::CHAMPIONS_KILLED);
-			const int assists = myhero->get_hero_stat(int_hero_stat::ASSISTS);
-			if (kill != old_kills || assists != old_assists)
+			if (sender->is_enemy())
 			{
+				const int kill = myhero->get_hero_stat(int_hero_stat::CHAMPIONS_KILLED);
+				const int assists = myhero->get_hero_stat(int_hero_stat::ASSISTS);
+				if (kill != old_kills || assists != old_assists)
+				{
 					if (settings::onkill->get_bool() && kill != old_kills)
 					{
 						std::string KillMessage = "you got an kill on the enemy " + sender->get_base_skin_name() + " and now disrespect him in all chat (use his name and harass the enemy on his champion)";
@@ -181,18 +205,48 @@ namespace GPT
 						tasks.push_back(new std::thread(make_request_new, AssistlMessage, ChatType::All));
 					}
 
-				
-				
-				old_kills = kill;
-				old_assists = assists;
+
+
+					old_kills = kill;
+					old_assists = assists;
+				}
+				ALLY_KILLS = ALLY_KILLS + 1;
+			}
+			if(sender->is_ally())
+			{
+				ENEMY_KILLS = ENEMY_KILLS + 1;
 			}
 		}
+		
+	}
+
+	void on_vote(const on_vote_args& args)
+	{
+
+		if(args.vote_type == on_vote_type::surrender)
+		{
+			if (args.sender && settings::on_surrender->get_bool())
+			{
+				if(args.sender->is_me()) return;
+
+				std::string surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted " + (args.success ? "YES" : "NO") + " what you wanna say? (use his name and say something to ally on his champion)";
+				tasks.push_back(new std::thread(make_request_new, surrenderPrompt, ChatType::All));
+			}
+		}
+
+		
 	}
 
 
 	void on_update()
 	{
 
+		std::tuple<int, int> kills = GetKills();
+		int enemyKills = std::get<0>(kills);  // Total kills for enemies
+		int allyKills = std::get<1>(kills);  // Total kills for allies
+
+		console->print("ENEMY KILLS: %i", enemyKills);
+		console->print("ally KILLS:  %i", allyKills);
 		auto current_chat_message = gui->get_last_chat_message();
 
 		if(current_chat_message == nullptr) return;
@@ -323,6 +377,7 @@ namespace GPT
 
 			settings::onkill = events_tab->add_checkbox("on_kill_event", "On Kill", false);
 			settings::on_assist = events_tab->add_checkbox("on_assistt", "On Assist", false);
+			settings::on_surrender = events_tab->add_checkbox("on_sur", "On Surrender", false);
 		}
 
 		settings::check_ai = main->add_button("ai_button", "Make test request");
@@ -374,13 +429,14 @@ namespace GPT
 
 		event_handler<events::on_update>::add_callback(on_update);
 		event_handler<events::on_object_dead>::add_callback(on_object_dead);
-		event_handler<events::onv>::add_callback(on_vote)
+		event_handler<events::on_vote>::add_callback(on_vote);
 	}
 
 	void unload()
 	{
 		event_handler<events::on_update>::remove_handler(on_update);
 		event_handler<events::on_object_dead>::remove_handler(on_object_dead);
+		event_handler<events::on_vote>::remove_handler(on_vote);
 	}
 
 
