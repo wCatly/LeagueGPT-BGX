@@ -26,7 +26,22 @@ enum class ParseType {
 };
 
 
+inline int CalculateSmartDelay(const std::string& message)
+{
+    // Average typing speed is roughly 40 words per minute,
+    // or about 200 characters per minute (assuming 5 characters per word),
+    // or about 3.33 characters per second.
+    const double charactersPerSecond = 3.33;
 
+    // Calculate the delay in seconds.
+    int delay = static_cast<int>(std::round(message.length() / charactersPerSecond));
+
+    // Ensure the delay is at least the minimum value (1 second in this case).
+    // You can also set a maximum value if desired.
+    delay = std::max(delay, 1);
+
+    return delay;
+}
 
 bool hasQuotesAtStartAndEnd(const std::string& str) {
     if (str.length() < 2) {

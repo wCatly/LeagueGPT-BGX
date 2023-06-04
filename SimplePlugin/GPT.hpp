@@ -49,6 +49,10 @@ namespace GPT
 		std::map<game_object_script, TreeEntry*> blacklist_dead;
 		TreeEntry* send_mode_death;
 
+
+		TreeEntry* smart_cooldown;
+
+		TreeEntry* message_cooldown;
 	}
 
 	int old_kills = 0;
@@ -80,6 +84,8 @@ namespace GPT
 			{
 				json response = json::parse(response_str);
 				std::string text = response["choices"][0]["message"]["content"];
+
+				std::this_thread::sleep_for(std::chrono::seconds(settings::smart_cooldown->get_bool() ? CalculateSmartDelay(text) : settings::message_cooldown->get_int()));
 				sendMessage(text, type, settings::custom_ignore_key);
 			}
 			catch (const std::exception& e) {
@@ -342,6 +348,41 @@ namespace GPT
 
 		settings::dont_if_dead = main->add_checkbox("deadcheck", "Don't send message if myhero dead", true);
 
+		settings::smart_cooldown = main->add_checkbox("smart_cooldown", "Smart Cooldown", true);
+		settings::smart_cooldown->set_tooltip(
+			"When enabled, the 'Smart Cooldown' feature adjusts the delay before each message is sent based on its length.\n\n"
+			"This simulates a more natural human-like typing behavior, where longer messages take more time to 'type'. The typing speed is calculated assuming an average of 200 characters typed per minute, or roughly 3.33 characters per second.\n\n"
+			"This feature can make interactions seem more natural and human-like. However, it can also cause longer delays before long messages are sent. If you need to send messages quickly regardless of their length, consider disabling this feature."
+		);
+
+		settings::message_cooldown = main->add_slider("cooldown", "Messages Cooldown", 1, 0, 20);
+		settings::message_cooldown->set_tooltip(
+			"This setting controls the delay before a response message is sent, to simulate the time it would take a human to type.\n\n"
+			"By adjusting this slider, you can change the delay from 0 to 20 seconds. A longer delay can make the response appear more 'human' by mimicking the time a person might need to read a message, think of a response, and type it out.\n\n"
+			"However, setting this value too high could slow down your interactions. Find a balance that works for your needs."
+		);
+
+		if(settings::smart_cooldown->get_bool())
+		{
+			settings::message_cooldown->is_hidden() = true;
+		}
+		else
+		{
+			settings::message_cooldown->is_hidden() = false;
+		}
+		
+		PropertyChangeCallback UpdaterCooldown = [](TreeEntry* entry)
+		{
+			if(entry->get_bool())
+			{
+				settings::message_cooldown->is_hidden() = true;
+			}
+			else
+			{
+				settings::message_cooldown->is_hidden() = false;
+			}
+		};
+		settings::smart_cooldown->add_property_change_callback(UpdaterCooldown);
 		main->add_separator("value_separator", "AI customization settings");
 
 		settings::open_ai_key = main->add_text_input("OPENAI_KEY_HERE", "OpenAI API Key", "KEY HERE");
