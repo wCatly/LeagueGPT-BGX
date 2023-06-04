@@ -44,6 +44,11 @@ namespace GPT
 
 		TreeEntry* quiet_hotkey;
 		TreeEntry* quiet_hotkey_team;
+
+		TreeEntry* on_death;
+		std::map<game_object_script, TreeEntry*> blacklist_dead;
+		TreeEntry* send_mode_death;
+
 	}
 
 	int old_kills = 0;
@@ -75,7 +80,6 @@ namespace GPT
 			{
 				json response = json::parse(response_str);
 				std::string text = response["choices"][0]["message"]["content"];
-
 				sendMessage(text, type, settings::custom_ignore_key);
 			}
 			catch (const std::exception& e) {
@@ -89,7 +93,7 @@ namespace GPT
 			console->print(("Error: " + std::string(e.what())).c_str());
 		}
 	}
-
+	
 	std::tuple<ChatType, std::string, bool> parseChatMessage(std::string input, std::string myhero_name, ParseType type) {
 
 
@@ -212,6 +216,40 @@ namespace GPT
 					old_assists = assists;
 				}
 			}
+			if(sender->is_ally())
+			{
+				if (settings::blacklist_dead[sender] == nullptr || !settings::blacklist_dead[sender]->get_bool()) {
+					return;
+				}
+
+				if (!settings::on_death->get_bool()) {
+					return;
+				}
+
+				std::string deathMessage;
+				if (sender->is_me()) {
+					deathMessage = "You just died, what you wanna say?";
+				}
+				else {
+					deathMessage = "Your teammate " + sender->get_base_skin_name() +
+						" is just died and now disrespect him in chat (use his name and harass the teammate on his champion)";
+				}
+
+				ChatType chatType;
+				int deathMode = settings::send_mode_death->get_int();
+				if (deathMode == 0) {
+					chatType = ChatType::All;
+				}
+				else if (deathMode == 1) {
+					chatType = ChatType::Team;
+				}
+				else {
+					return; 
+				}
+
+				tasks.push_back(new std::thread(make_request_new, deathMessage, chatType));
+
+			}
 		}
 		
 	}
@@ -229,9 +267,9 @@ namespace GPT
 			switch (settings::on_sur_special->get_bool() ? 1 : 0)
 			{
 			case 1:
-				if (enemyKills > allyKills && args.success)
+				if (enemyKills > allyKills && !args.success)
 				{
-					surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted YES. What do you want to say? (Use his name and harass the ally on his champion because we are losing)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
+					surrenderPrompt = "Surrender: " + args.sender->get_base_skin_name() + " (" + args.sender->get_name_cstr() + ") voted NO. What do you want to say? (Use his name and harass the ally on his champion because we are losing)\nAlly Kills: " + std::to_string(allyKills) + "\nEnemy Kills: " + std::to_string(enemyKills);
 				}
 				else if (allyKills > enemyKills && args.success)
 				{
@@ -376,8 +414,12 @@ namespace GPT
 		settings::custom_ignore_key = community_prompts[settings::promt->get_int()].ignore_key;
 
 		main->add_separator("evetns", "Misc Stuff");
-		settings::quiet_hotkey = main->add_button("quiet_hotkey", "Quiet Hotkey");
-		settings::quiet_hotkey_team = main->add_button("quiet_hotkey_team", "Quiet Hotkey (Team)");
+		const auto QuietSettingsTab = main->add_tab("quietsettings", "Quiet Buttons");
+		{
+			settings::quiet_hotkey = QuietSettingsTab->add_button("quiet_hotkey", "Quiet Hotkey");
+			settings::quiet_hotkey_team = QuietSettingsTab->add_button("quiet_hotkey_team", "Quiet Hotkey (Team)");
+		}
+
 		const auto events_tab = main->add_tab("events_tab", "Game Events");
 		{
 
@@ -385,10 +427,34 @@ namespace GPT
 			settings::on_assist = events_tab->add_checkbox("on_assistt", "On Assist", false);
 			settings::on_surrender = events_tab->add_checkbox("on_sur", "On Surrender", false);
 			settings::on_sur_special = events_tab->add_checkbox("on_surs", "On SurrenderSpecialCase", false);
+			settings::on_sur_special->set_tooltip(
+				"When enabled, this option changes the surrender message to encourage interaction with allies who vote against the team's current situation.\n\n"
+				"Specifically:\n"
+				"1. If your team is losing (less kills than the enemy team) and an ally votes NO to surrender, the system prompts you to interact with that ally, possibly by questioning their decision.\n"
+				"2. If your team is winning (more kills than the enemy team) and an ally votes YES to surrender, the system again prompts you to interact with that ally, likely questioning why they want to surrender while ahead.\n\n"
+				"Please use this feature responsibly and remember to maintain a positive and respectful gaming environment."
+			);
+
+			const auto on_death_tab = events_tab->add_tab("on_death_tab", "On Ally Death");
+			{
+				settings::on_death = on_death_tab->add_checkbox("on_death_checkbox", "On Ally Death", false);
+
+				auto allyblacklist_tab = on_death_tab->add_tab("player_blacklist", "Player Blacklist");
+				{
+					allyblacklist_tab->add_separator(".ping_blacklisttt.", "Trigger on:");
+					{
+						for (auto&& Player : entitylist->get_ally_heroes()) {
+							settings::blacklist_dead[Player] = allyblacklist_tab->add_checkbox(myhero->get_model() + ".BlackListt." + std::to_string(Player->get_network_id()), Player->get_base_skin_name(), false, false);
+							settings::blacklist_dead[Player]->set_texture(Player->get_square_icon_portrait());
+						}
+					}
+					settings::send_mode_death = on_death_tab->add_combobox("send_mode", "Send to:", { {"All Chat", nullptr}, {"Team Chat", nullptr} }, 1);
+				}
+			}
 		}
 
 		settings::check_ai = main->add_button("ai_button", "Make test request");
-
+		settings::check_ai->set_tooltip("Make test request to OpenAI API Servers to check everything is stable.\nThis gonna freeze game");
 		PropertyChangeCallback Button = [](TreeEntry* entry)
 		{
 			std::string prompt = "Say this is a test!";
